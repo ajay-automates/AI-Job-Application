@@ -50,23 +50,29 @@ async def auto_apply(
     # Get or create job record if job_url provided
     job_id = request.job_id
     if request.job_url and not job_id:
-        # Check if job exists with this URL
-        existing_job = db.table("jobs").select("id").eq("url", request.job_url).single().execute()
-        
-        if existing_job.data:
-            job_id = existing_job.data["id"]
-        else:
-            # Create a job record from URL
-            new_job = db.table("jobs").insert({
-                "title": request.job_title or "Job from URL",
-                "company": request.company or "Unknown",
-                "url": request.job_url,
-                "description": f"Job application URL: {request.job_url}",
-                "is_active": True,
-                "source": "manual_url"
-            }).execute()
-            if new_job.data:
-                job_id = new_job.data[0]["id"]
+        try:
+            # Check if job exists with this URL
+            existing_job = db.table("jobs").select("id").eq("url", request.job_url).maybe_single().execute()
+            
+            if existing_job.data:
+                job_id = existing_job.data["id"]
+            else:
+                # Create a job record from URL
+                new_job = db.table("jobs").insert({
+                    "title": request.job_title or "Job from URL",
+                    "company": request.company or "Unknown",
+                    "url": request.job_url,
+                    "description": f"Job application URL: {request.job_url}",
+                    "is_active": True,
+                    "source": "manual_url"
+                }).execute()
+                if new_job.data:
+                    job_id = new_job.data[0]["id"]
+        except Exception as job_error:
+            # If job creation fails, continue without job_id
+            # Application can still be created without job record
+            print(f"Warning: Could not create/find job record: {job_error}")
+            job_id = None
     
     # Create application record
     app_data = {
@@ -79,24 +85,35 @@ async def auto_apply(
     if job_id:
         app_data["job_id"] = job_id
     
-    app_response = db.table("applications").insert(app_data).execute()
-    application_id = app_response.data[0]["id"]
-    
-    # Queue background task
-    background_tasks.add_task(
-        FormFillerService.fill_and_apply,
-        application_id=application_id,
-        job_url=request.job_url,
-        profile=profile,
-        resume_url=request.resume_url or profile.get("resume_url"),
-        cover_letter=request.cover_letter
-    )
-    
-    return {
-        "application_id": application_id,
-        "status": "queued",
-        "message": "Application automation started"
-    }
+    try:
+        app_response = db.table("applications").insert(app_data).execute()
+        
+        if not app_response.data:
+            raise HTTPException(status_code=500, detail="Failed to create application record")
+        
+        application_id = app_response.data[0]["id"]
+        
+        # Queue background task
+        background_tasks.add_task(
+            FormFillerService.fill_and_apply,
+            application_id=application_id,
+            job_url=request.job_url,
+            profile=profile,
+            resume_url=request.resume_url or profile.get("resume_url"),
+            cover_letter=request.cover_letter
+        )
+        
+        return {
+            "application_id": application_id,
+            "status": "queued",
+            "message": "Application automation started"
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        error_msg = str(e)
+        print(f"Error creating application: {error_msg}")
+        raise HTTPException(status_code=500, detail=f"Failed to create application: {error_msg}")
 
 
 @router.post("/scrape-jobs")
