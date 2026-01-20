@@ -1701,8 +1701,10 @@ async def main():
     
     if success:
         print("\n✅ Form filling completed successfully!")
+        sys.exit(0)
     else:
         print("\n❌ Form filling failed. Check logs for details.")
+        sys.exit(1)
 
 def suppress_asyncio_warnings():
     """Suppress Windows asyncio pipe cleanup warnings."""
