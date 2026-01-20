@@ -51,25 +51,37 @@ async def auto_apply(
     job_id = request.job_id
     if request.job_url and not job_id:
         try:
-            # Check if job exists with this URL
+            # Check if job exists with this URL (handle unique constraint)
             existing_job = db.table("jobs").select("id").eq("url", request.job_url).maybe_single().execute()
             
             if existing_job.data:
                 job_id = existing_job.data["id"]
             else:
                 # Create a job record from URL
-                new_job = db.table("jobs").insert({
-                    "title": request.job_title or "Job from URL",
-                    "company": request.company or "Unknown",
-                    "url": request.job_url,
-                    "description": f"Job application URL: {request.job_url}",
-                    "is_active": True,
-                    "source": "manual_url"
-                }).execute()
-                if new_job.data:
-                    job_id = new_job.data[0]["id"]
+                # Note: url has UNIQUE constraint, so if it exists, insert will fail
+                try:
+                    new_job = db.table("jobs").insert({
+                        "title": request.job_title or "Job from URL",
+                        "company": request.company or "Unknown",
+                        "url": request.job_url,
+                        "description": f"Job application URL: {request.job_url}",
+                        "is_active": True,
+                        "source": "manual_url"
+                    }).execute()
+                    if new_job.data:
+                        job_id = new_job.data[0]["id"]
+                except Exception as insert_error:
+                    # If insert fails (e.g., unique constraint), try to fetch again
+                    # This handles race conditions where another request created it
+                    existing_job_retry = db.table("jobs").select("id").eq("url", request.job_url).maybe_single().execute()
+                    if existing_job_retry.data:
+                        job_id = existing_job_retry.data["id"]
+                    else:
+                        # If still can't find/create, log and continue without job_id
+                        print(f"Warning: Could not create job record (may be duplicate): {insert_error}")
+                        job_id = None
         except Exception as job_error:
-            # If job creation fails, continue without job_id
+            # If job lookup/creation fails, continue without job_id
             # Application can still be created without job record
             print(f"Warning: Could not create/find job record: {job_error}")
             job_id = None
