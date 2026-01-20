@@ -8,9 +8,31 @@ from fastapi.exceptions import RequestValidationError
 from app.config import settings
 from app.routers import jobs, applications, automation, profile
 import traceback
+import subprocess
+from contextlib import asynccontextmanager
+
+# Lifespan context manager for startup/shutdown events
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """
+    Lifespan events:
+    1. Install Playwright browsers (for automation)
+    """
+    print("🚀 Startup: Checking Playwright browser installation...")
+    try:
+        # Install chromium only to save time/space
+        subprocess.run(["playwright", "install", "chromium"], check=True)
+        print("✅ Playwright browsers installed successfully.")
+    except Exception as e:
+        print(f"⚠️ Failed to install Playwright browsers: {e}")
+    
+    yield
+    
+    print("🛑 Shutdown: Cleaning up resources...")
 
 # Create FastAPI app
 app = FastAPI(
+    lifespan=lifespan,
     title="JobAutomate API",
     description="AI-powered job application automation platform",
     version="1.0.0",
