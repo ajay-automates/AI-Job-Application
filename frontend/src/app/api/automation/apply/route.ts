@@ -15,7 +15,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { job_url, job_id, resume_url, cover_letter } = body
+    const { job_url, job_id, resume_url, cover_letter, job_title, company } = body
 
     if (!job_url) {
       return NextResponse.json(
@@ -48,8 +48,11 @@ export async function POST(request: NextRequest) {
       body: JSON.stringify({
         user_id: user.id,
         job_url,
+        job_id,
         resume_url,
         cover_letter,
+        job_title,
+        company,
       }),
     })
 

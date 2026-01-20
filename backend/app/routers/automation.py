@@ -16,8 +16,11 @@ router = APIRouter()
 class AutoApplyRequest(BaseModel):
     user_id: str
     job_url: str
+    job_id: Optional[str] = None
     resume_url: Optional[str] = None
     cover_letter: Optional[str] = None
+    job_title: Optional[str] = None
+    company: Optional[str] = None
 
 
 class ScrapeJobsRequest(BaseModel):
@@ -44,6 +47,27 @@ async def auto_apply(
     
     profile = profile_response.data
     
+    # Get or create job record if job_url provided
+    job_id = request.job_id
+    if request.job_url and not job_id:
+        # Check if job exists with this URL
+        existing_job = db.table("jobs").select("id").eq("url", request.job_url).single().execute()
+        
+        if existing_job.data:
+            job_id = existing_job.data["id"]
+        else:
+            # Create a job record from URL
+            new_job = db.table("jobs").insert({
+                "title": request.job_title or "Job from URL",
+                "company": request.company or "Unknown",
+                "url": request.job_url,
+                "description": f"Job application URL: {request.job_url}",
+                "is_active": True,
+                "source": "manual_url"
+            }).execute()
+            if new_job.data:
+                job_id = new_job.data[0]["id"]
+    
     # Create application record
     app_data = {
         "user_id": request.user_id,
@@ -51,6 +75,9 @@ async def auto_apply(
         "automation_enabled": True,
         "automation_status": "queued"
     }
+    
+    if job_id:
+        app_data["job_id"] = job_id
     
     app_response = db.table("applications").insert(app_data).execute()
     application_id = app_response.data[0]["id"]

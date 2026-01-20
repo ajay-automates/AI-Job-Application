@@ -60,6 +60,8 @@ export function ApplyByUrl() {
         },
         body: JSON.stringify({
           job_url: jobUrl.trim(),
+          job_title: "Job from URL",
+          company: "Unknown",
         }),
       })
 
