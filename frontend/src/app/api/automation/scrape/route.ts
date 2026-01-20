@@ -26,7 +26,7 @@ export async function POST(request: NextRequest) {
 
     // Forward to backend
     const backendUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
-    const response = await fetch(`${backendUrl}/automation/scrape-jobs`, {
+    const response = await fetch(`${backendUrl}/api/automation/scrape-jobs`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -39,9 +39,15 @@ export async function POST(request: NextRequest) {
     })
 
     if (!response.ok) {
-      const error = await response.json()
+      let errorMessage = 'Failed to scrape jobs'
+      try {
+        const error = await response.json()
+        errorMessage = error.detail || error.message || error.error || errorMessage
+      } catch {
+        errorMessage = `Backend returned ${response.status}: ${response.statusText}`
+      }
       return NextResponse.json(
-        { error: error.detail || 'Failed to scrape jobs' },
+        { error: errorMessage },
         { status: response.status }
       )
     }

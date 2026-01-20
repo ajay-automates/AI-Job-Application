@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { JobsTable } from '@/components/jobs/JobsTable'
 import { JobsFilters } from '@/components/jobs/JobsFilters'
 import { ScrapeJobsModal } from '@/components/jobs/ScrapeJobsModal'
+import { ApplyByUrl } from '@/components/jobs/ApplyByUrl'
 
 export default async function JobsPage({
   searchParams,
@@ -67,7 +68,10 @@ export default async function JobsPage({
             Browse and apply to jobs that match your profile
           </p>
         </div>
-        <ScrapeJobsModal />
+        <div className="flex gap-2">
+          <ApplyByUrl />
+          <ScrapeJobsModal />
+        </div>
       </div>
 
       <JobsFilters />
