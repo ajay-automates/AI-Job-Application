@@ -24,3 +24,10 @@ python-jose[cryptography]==3.3.0
 passlib[bcrypt]==1.7.4
 redis==5.2.0
 celery==5.4.0
+
+# Automation & Scraping (Added for Auto-Apply)
+playwright>=1.40.0
+undetected-playwright>=0.3.0
+geocoder>=1.38.1
+beautifulsoup4>=4.12.0
+lxml>=4.9.0
