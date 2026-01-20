@@ -137,6 +137,17 @@ class FormFillerService:
             # Verify script exists
             import os
             if not os.path.exists(script_path):
+                # Fallback: Try relative path (common in production if env var is stale)
+                print(f"Script not found at {script_path}. Attempting fallback...")
+                
+                # Try ./job_application_automator/form_filler.py
+                fallback_script = os.path.join(os.getcwd(), "job_application_automator", "form_filler.py")
+                if os.path.exists(fallback_script):
+                    print(f"Found fallback script: {fallback_script}")
+                    script_path = fallback_script
+                    automator_path = os.getcwd() # Update cwd for execution
+                
+            if not os.path.exists(script_path):
                 error_msg = f"Form filler script not found at: {script_path}. Please verify JOB_AUTOMATOR_PATH is correct."
                 db.table("applications").update({
                     "automation_status": "failed",
