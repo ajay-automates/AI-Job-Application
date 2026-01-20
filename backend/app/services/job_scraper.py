@@ -25,7 +25,7 @@ class JobScraperService:
         db = Database.get_client()
         
         try:
-            # Call job board aggregator API
+            # Call job board aggregator API with authentication
             async with httpx.AsyncClient() as client:
                 params = {
                     "keywords": keywords,
@@ -34,9 +34,15 @@ class JobScraperService:
                 if location:
                     params["location"] = location
                 
+                # Add authentication header
+                headers = {
+                    "Authorization": f"Bearer {settings.API_AUTH_HASH}"
+                }
+                
                 response = await client.get(
-                    f"{settings.JOB_BOARD_AGGREGATOR_URL}/api/jobs/search",
+                    f"{settings.JOB_BOARD_AGGREGATOR_URL}/server/jobs/search",
                     params=params,
+                    headers=headers,
                     timeout=60.0
                 )
                 
@@ -90,6 +96,32 @@ class JobScraperService:
                             "jobs_saved": saved_count
                         }
                     }).execute()
+                    
+                    # Trigger auto-matching for all users with resumes
+                    if saved_count > 0:
+                        try:
+                            from app.services.job_matcher import JobMatcherService
+                            
+                            # Get all users with resumes
+                            users_response = db.table("profiles").select("id,resume_text").execute()
+                            users_with_resumes = [
+                                u for u in users_response.data 
+                                if u.get("resume_text")
+                            ]
+                            
+                            # Trigger matching for each user (in background)
+                            for user in users_with_resumes:
+                                try:
+                                    # Match only the new jobs
+                                    await JobMatcherService.batch_match_jobs(
+                                        user_id=user["id"],
+                                        profile=user,
+                                        max_jobs=saved_count
+                                    )
+                                except Exception as e:
+                                    print(f"Error matching jobs for user {user['id']}: {e}")
+                        except Exception as e:
+                            print(f"Error triggering auto-matching: {e}")
                     
                     return {
                         "success": True,

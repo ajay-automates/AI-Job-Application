@@ -25,8 +25,9 @@ class Settings(BaseSettings):
     REDIS_URL: str = os.getenv("REDIS_URL", "redis://localhost:6379")
     
     # MCP Integration
-    JOB_AUTOMATOR_PATH: str = os.getenv("JOB_AUTOMATOR_PATH", "")
+    JOB_AUTOMATOR_PATH: str = os.getenv("JOB_AUTOMATOR_PATH", "/Users/ajaykumarreddy/Desktop/PROJECTS/Job Application MCP/job-application-automator-mcp")
     JOB_BOARD_AGGREGATOR_URL: str = os.getenv("JOB_BOARD_AGGREGATOR_URL", "http://localhost:8080")
+    API_AUTH_HASH: str = os.getenv("API_AUTH_HASH", "your-secure-auth-hash-change-in-production")
     
     # CORS
     ALLOWED_ORIGINS: str = "http://localhost:3000,http://localhost:3001"

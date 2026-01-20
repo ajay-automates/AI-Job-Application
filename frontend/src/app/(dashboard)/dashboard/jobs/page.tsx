@@ -1,8 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { JobsTable } from '@/components/jobs/JobsTable'
 import { JobsFilters } from '@/components/jobs/JobsFilters'
-import { Button } from '@/components/ui/button'
-import { Plus } from 'lucide-react'
+import { ScrapeJobsModal } from '@/components/jobs/ScrapeJobsModal'
 
 export default async function JobsPage({
   searchParams,
@@ -68,10 +67,7 @@ export default async function JobsPage({
             Browse and apply to jobs that match your profile
           </p>
         </div>
-        <Button>
-          <Plus className="mr-2 h-4 w-4" />
-          Scrape New Jobs
-        </Button>
+        <ScrapeJobsModal />
       </div>
 
       <JobsFilters />

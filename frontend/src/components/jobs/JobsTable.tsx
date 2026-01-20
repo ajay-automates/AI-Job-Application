@@ -6,6 +6,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { MapPin, DollarSign, Briefcase, ExternalLink } from 'lucide-react'
+import { AutoApplyButton } from './AutoApplyButton'
 
 interface Job {
   id: string
@@ -103,10 +104,17 @@ export function JobsTable({ jobs, matchScores }: JobsTableProps) {
                 </div>
 
                 <div className="flex flex-col gap-2">
-                  <Button asChild size="sm">
+                  <AutoApplyButton
+                    jobId={job.id}
+                    jobUrl={job.url}
+                    jobTitle={job.title}
+                    company={job.company}
+                    size="sm"
+                  />
+                  <Button asChild size="sm" variant="outline">
                     <Link href={`/dashboard/jobs/${job.id}`}>View Details</Link>
                   </Button>
-                  <Button size="sm" variant="outline" asChild>
+                  <Button size="sm" variant="ghost" asChild>
                     <a href={job.url} target="_blank" rel="noopener noreferrer">
                       <ExternalLink className="mr-2 h-4 w-4" />
                       Original

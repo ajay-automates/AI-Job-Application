@@ -78,6 +78,24 @@ export function ResumeUpload({ profile, userId }: ResumeUploadProps) {
             router.refresh()
             setFile(null)
             setLoading(false)
+
+            // Trigger AI job matching in background
+            try {
+              const matchResponse = await fetch('/api/jobs/match-all', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ max_jobs: 50 }),
+              })
+
+              if (matchResponse.ok) {
+                toast.success('AI Matching Started! 🤖 Finding the best job matches...')
+              }
+            } catch (error) {
+              console.error('Failed to trigger matching:', error)
+              // Don't show error to user, matching is optional
+            }
           } catch (err) {
             toast.error('Error reading file. Please paste resume text instead.')
             console.error(err)
@@ -106,6 +124,24 @@ export function ResumeUpload({ profile, userId }: ResumeUploadProps) {
 
         toast.success('Resume text saved successfully!')
         router.refresh()
+
+        // Trigger AI job matching in background
+        try {
+          const matchResponse = await fetch('/api/jobs/match-all', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ max_jobs: 50 }),
+          })
+
+          if (matchResponse.ok) {
+            toast.success('AI Matching Started! 🤖 Finding the best job matches...')
+          }
+        } catch (error) {
+          console.error('Failed to trigger matching:', error)
+          // Don't show error to user, matching is optional
+        }
       }
     } catch (error) {
       toast.error('Failed to upload resume')

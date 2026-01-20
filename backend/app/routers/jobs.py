@@ -3,9 +3,10 @@ Jobs API Router
 Handles job listing operations
 """
 from typing import List, Optional
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, BackgroundTasks
 from supabase import Client
 from app.database import get_db
+from app.services.job_matcher import JobMatcherService
 
 router = APIRouter()
 
@@ -76,4 +77,45 @@ async def get_job_matches(
         "matches": response.data,
         "count": len(response.data),
         "min_score": min_score
+    }
+
+
+@router.post("/match-all/{user_id}")
+async def match_all_jobs(
+    user_id: str,
+    background_tasks: BackgroundTasks,
+    max_jobs: int = Query(50, ge=1, le=200),
+    db: Client = Depends(get_db)
+):
+    """Trigger AI matching for all active jobs for a user"""
+    
+    # Get user profile
+    profile_response = db.table("profiles").select("*").eq(
+        "id", user_id
+    ).single().execute()
+    
+    if not profile_response.data:
+        raise HTTPException(status_code=404, detail="User profile not found")
+    
+    profile = profile_response.data
+    
+    # Check if resume exists
+    if not profile.get("resume_text"):
+        raise HTTPException(
+            status_code=400, 
+            detail="Resume required. Please upload your resume first."
+        )
+    
+    # Queue background task for matching
+    background_tasks.add_task(
+        JobMatcherService.batch_match_jobs,
+        user_id=user_id,
+        profile=profile,
+        max_jobs=max_jobs
+    )
+    
+    return {
+        "status": "queued",
+        "message": f"AI matching started for up to {max_jobs} jobs",
+        "user_id": user_id
     }

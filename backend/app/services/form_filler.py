@@ -72,7 +72,15 @@ class FormFillerService:
             
             # Call the form filler script
             automator_path = settings.JOB_AUTOMATOR_PATH
+            if not automator_path:
+                raise Exception("JOB_AUTOMATOR_PATH not configured in settings")
+            
             script_path = f"{automator_path}/job_application_automator/form_filler.py"
+            
+            # Verify script exists
+            import os
+            if not os.path.exists(script_path):
+                raise Exception(f"Form filler script not found at: {script_path}")
             
             # Run form filler
             process = await asyncio.create_subprocess_exec(
@@ -81,7 +89,8 @@ class FormFillerService:
                 "--json", form_data_file,
                 "--url", job_url,
                 stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.PIPE
+                stderr=asyncio.subprocess.PIPE,
+                cwd=automator_path  # Set working directory
             )
             
             stdout, stderr = await process.communicate()

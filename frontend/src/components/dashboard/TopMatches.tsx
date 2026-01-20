@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { ArrowRight, MapPin, DollarSign } from 'lucide-react'
+import { AutoApplyButton } from '@/components/jobs/AutoApplyButton'
 
 interface TopMatchesProps {
   userId: string
@@ -24,7 +25,8 @@ export async function TopMatches({ userId }: TopMatchesProps) {
         salary_min,
         salary_max,
         salary_currency,
-        job_type
+        job_type,
+        url
       )
     `)
     .eq('user_id', userId)
@@ -97,11 +99,15 @@ export async function TopMatches({ userId }: TopMatchesProps) {
                     )}
                   </div>
                   <div className="flex gap-2 mt-3">
-                    <Button size="sm" asChild>
+                    <AutoApplyButton
+                      jobId={job.id}
+                      jobUrl={job.url}
+                      jobTitle={job.title}
+                      company={job.company}
+                      size="sm"
+                    />
+                    <Button size="sm" variant="outline" asChild>
                       <Link href={`/dashboard/jobs/${job.id}`}>View</Link>
-                    </Button>
-                    <Button size="sm" variant="outline">
-                      Quick Apply
                     </Button>
                   </div>
                 </div>
