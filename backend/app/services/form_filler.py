@@ -75,8 +75,8 @@ class FormFillerService:
                     "user_id": profile["id"],
                     "action": "form_filling_timeout",
                     "success": False,
-                    "error_code": "timeout",
-                    "metadata": {"timeout_seconds": 300}
+                    "error_message": "Form filling timeout: Process exceeded 5 minute limit",
+                    "metadata": {"timeout_seconds": 300, "error_code": "timeout"}
                 }).execute()
                 
                 raise
@@ -102,8 +102,8 @@ class FormFillerService:
                 "user_id": profile["id"],
                 "action": "form_filling_error",
                 "success": False,
-                "error_code": "exception",
-                "metadata": {"error": str(e)}
+                "error_message": str(e),
+                "metadata": {"error": str(e), "error_code": "exception"}
             }).execute()
 
     @staticmethod
