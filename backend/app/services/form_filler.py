@@ -247,9 +247,51 @@ class FormFillerService:
                 cwd=automator_path
             )
             
-            stdout, stderr = await process.communicate()
+            # ✅ READ OUTPUT IN REAL-TIME (streaming)
+            stdout_lines = []
+            stderr_lines = []
             
-            if process.returncode == 0:
+            # Read stdout line by line
+            async def read_stream(stream, output_list, stream_name):
+                while True:
+                    try:
+                        line = await asyncio.wait_for(stream.readline(), timeout=1.0)
+                        if not line:
+                            break
+                        decoded = line.decode('utf-8', errors='replace').strip()
+                        if decoded:
+                            output_list.append(decoded)
+                            logger.info(f"[SUBPROCESS {stream_name}] {decoded}")
+                    except asyncio.TimeoutError:
+                        continue
+                    except Exception as e:
+                        logger.error(f"Error reading {stream_name}: {e}")
+                        break
+            
+            # Create tasks to read stdout and stderr concurrently
+            stdout_task = asyncio.create_task(read_stream(process.stdout, stdout_lines, "STDOUT"))
+            stderr_task = asyncio.create_task(read_stream(process.stderr, stderr_lines, "STDERR"))
+            
+            # Wait for process to complete
+            returncode = await process.wait()
+            
+            # Cancel the read tasks
+            stdout_task.cancel()
+            stderr_task.cancel()
+            
+            # Give final reads a moment to complete
+            try:
+                await asyncio.gather(stdout_task, stderr_task)
+            except asyncio.CancelledError:
+                pass
+            
+            # Combine outputs
+            stdout = "\n".join(stdout_lines).encode('utf-8')
+            stderr = "\n".join(stderr_lines).encode('utf-8')
+            
+            logger.info(f"Subprocess completed with return code: {returncode}")
+            
+            if returncode == 0:
                 logger.info(f"[{application_id}] Completed successfully")
                 
                 db.table("applications").update({
