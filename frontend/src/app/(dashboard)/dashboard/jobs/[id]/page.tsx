@@ -97,6 +97,7 @@ export default async function JobDetailsPage({
               jobTitle={job.title}
               company={job.company}
               size="lg"
+              userId={user.id}
             />
           )}
           <Button size="lg" variant="outline" asChild>

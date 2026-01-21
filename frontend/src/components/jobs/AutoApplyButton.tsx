@@ -10,13 +10,15 @@ export function AutoApplyButton({
   jobUrl, 
   jobTitle, 
   company, 
-  size 
+  size,
+  userId
 }: { 
   jobId: string; 
   jobUrl: string; 
   jobTitle?: string; 
   company?: string; 
   size?: 'default' | 'sm' | 'lg' | 'icon';
+  userId: string;
 }) {
   const { toast } = useToast()
   const [isApplying, setIsApplying] = useState(false)
@@ -62,7 +64,9 @@ export function AutoApplyButton({
         body: JSON.stringify({
           job_id: jobId,
           job_url: jobUrl,
-          user_id: "test-user-id" // Adding this because I know it's required by the backend model I saw.
+          user_id: userId,
+          job_title: jobTitle,
+          company: company
         }),
       })
 
