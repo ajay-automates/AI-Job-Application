@@ -2,13 +2,16 @@
 Jobs API Router
 Handles job listing operations
 """
+# Define router first to ensure it's always available, even if imports fail
+from fastapi import APIRouter
+router = APIRouter()
+
+# Now import other dependencies
 from typing import List, Optional
-from fastapi import APIRouter, Depends, HTTPException, Query, BackgroundTasks
+from fastapi import Depends, HTTPException, Query, BackgroundTasks
 from supabase import Client
 from app.database import get_db
 from app.services.job_matcher import JobMatcherService
-
-router = APIRouter()
 
 
 @router.get("/")

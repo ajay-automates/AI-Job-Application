@@ -2,15 +2,18 @@
 Profile API Router
 Handles user profile and resume management
 """
+# Define router first to ensure it's always available, even if imports fail
+from fastapi import APIRouter
+router = APIRouter()
+
+# Now import other dependencies
 from typing import Optional
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
+from fastapi import Depends, HTTPException, UploadFile, File
 from pydantic import BaseModel
 from supabase import Client
 from datetime import datetime
 from app.database import get_db
 from app.services.resume_parser import ResumeParserService
-
-router = APIRouter()
 
 
 class ProfileUpdate(BaseModel):
