@@ -76,7 +76,7 @@ export default async function JobsPage({
 
       <JobsFilters />
 
-      <JobsTable jobs={jobs || []} matchScores={matchScores} />
+      <JobsTable jobs={jobs || []} matchScores={matchScores} userId={user.id} />
     </div>
   )
 }

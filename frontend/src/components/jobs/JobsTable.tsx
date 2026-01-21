@@ -25,9 +25,10 @@ interface Job {
 interface JobsTableProps {
   jobs: Job[]
   matchScores: { [key: string]: number }
+  userId: string
 }
 
-export function JobsTable({ jobs, matchScores }: JobsTableProps) {
+export function JobsTable({ jobs, matchScores, userId }: JobsTableProps) {
   if (jobs.length === 0) {
     return (
       <Card>
@@ -110,6 +111,7 @@ export function JobsTable({ jobs, matchScores }: JobsTableProps) {
                     jobTitle={job.title}
                     company={job.company}
                     size="sm"
+                    userId={userId}
                   />
                   <Button asChild size="sm" variant="outline">
                     <Link href={`/dashboard/jobs/${job.id}`}>View Details</Link>
