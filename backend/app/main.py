@@ -6,7 +6,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError
 from app.config import settings
-from app.routers import jobs, applications, automation, profile
+from app.routers import jobs, automation, profile
+from app.routers.applications import router as applications_router
 import traceback
 import subprocess
 from contextlib import asynccontextmanager
@@ -78,7 +79,7 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
 
 # Include routers
 app.include_router(jobs.router, prefix="/api/jobs", tags=["Jobs"])
-app.include_router(applications.router, prefix="/api/applications", tags=["Applications"])
+app.include_router(applications_router, prefix="/api/applications", tags=["Applications"])
 app.include_router(automation.router, prefix="/api/automation", tags=["Automation"])
 app.include_router(profile.router, prefix="/api/profile", tags=["Profile"])
 
