@@ -105,6 +105,7 @@ export async function TopMatches({ userId }: TopMatchesProps) {
                       jobTitle={job.title}
                       company={job.company}
                       size="sm"
+                      userId={userId}
                     />
                     <Button size="sm" variant="outline" asChild>
                       <Link href={`/dashboard/jobs/${job.id}`}>View</Link>
