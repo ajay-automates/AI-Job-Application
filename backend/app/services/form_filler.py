@@ -238,14 +238,28 @@ class FormFillerService:
             
             logger.info(f"[{application_id}] Step 3: Submitting form (running script)")
             
-            process = await asyncio.create_subprocess_exec(
-                "python3",
-                script_path,
-                form_data_file,
-                stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.PIPE,
-                cwd=automator_path
-            )
+            # Comprehensive logging before subprocess launch
+            logger.info(f"[{application_id}] Launching subprocess:")
+            logger.info(f"  Command: python3")
+            logger.info(f"  Script: {script_path}")
+            logger.info(f"  Args: {form_data_file}")
+            logger.info(f"  CWD: {automator_path}")
+            logger.info(f"  Script exists: {os.path.exists(script_path)}")
+            logger.info(f"  Form data file exists: {os.path.exists(form_data_file)}")
+            
+            try:
+                process = await asyncio.create_subprocess_exec(
+                    "python3",
+                    script_path,
+                    form_data_file,
+                    stdout=asyncio.subprocess.PIPE,
+                    stderr=asyncio.subprocess.PIPE,
+                    cwd=automator_path
+                )
+                logger.info(f"[{application_id}] Subprocess created successfully (PID: {process.pid})")
+            except Exception as launch_error:
+                logger.error(f"[{application_id}] Failed to launch subprocess: {launch_error}", exc_info=True)
+                raise
             
             # ✅ READ OUTPUT IN REAL-TIME (streaming)
             stdout_lines = []
