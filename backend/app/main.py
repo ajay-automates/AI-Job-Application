@@ -20,9 +20,11 @@ async def lifespan(app: FastAPI):
     """
     print("🚀 Startup: Checking Playwright browser installation...")
     try:
-        # Install chromium only to save time/space
-        subprocess.run(["playwright", "install", "chromium"], check=True)
-        print("✅ Playwright browsers installed successfully.")
+        # Install chromium and its OS dependencies
+        # --with-deps requires root, which is usually true in containers
+        print("🔧 Installing Playwright dependencies (this may take a minute)...")
+        subprocess.run(["playwright", "install", "--with-deps", "chromium"], check=True)
+        print("✅ Playwright browsers and dependencies installed successfully.")
     except Exception as e:
         print(f"⚠️ Failed to install Playwright browsers: {e}")
     
