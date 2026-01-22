@@ -145,31 +145,23 @@ export function ApplicationsTable({ applications }: ApplicationsTableProps) {
                       View
                     </Link>
                   </Button>
-                  {app.submission_confirmed && app.submitted_application_url && (
+                  {(app.submitted_application_url || app.jobs?.url) && (
                     <Button 
                       size="sm" 
                       variant="default" 
-                      className="bg-green-600 hover:bg-green-700 text-white"
+                      className={app.submission_confirmed 
+                        ? "bg-green-600 hover:bg-green-700 text-white" 
+                        : "bg-blue-600 hover:bg-blue-700 text-white"
+                      }
                       asChild
                     >
                       <a
-                        href={app.submitted_application_url}
+                        href={app.submitted_application_url || app.jobs?.url || '#'}
                         target="_blank"
                         rel="noopener noreferrer"
                       >
                         <ExternalLink className="h-4 w-4 mr-1 inline" />
-                        Open Application
-                      </a>
-                    </Button>
-                  )}
-                  {app.jobs?.url && (
-                    <Button size="sm" variant="ghost" asChild>
-                      <a
-                        href={app.jobs.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                      >
-                        <ExternalLink className="h-4 w-4" />
+                        {app.submission_confirmed ? 'Open Application' : 'View Job'}
                       </a>
                     </Button>
                   )}
