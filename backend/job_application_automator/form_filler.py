@@ -114,12 +114,10 @@ class SimpleFormFiller:
             
             if success:
                 self.logger.info("✅ All form pages filled successfully!")
-                self.logger.info("🔍 Please review the filled form and submit manually.")
-                self.logger.info("🛑 The browser will remain open. Close it when done.")
+                self.logger.info("🚀 Automatically submitting the form...")
                 
-                # Wait for user to review and submit
-                if self.keep_browser_open:
-                    await self._wait_for_user_action()
+                # Automatically submit the form
+                await self._auto_submit_form()
                 
             return success
             
@@ -1208,69 +1206,121 @@ class SimpleFormFiller:
         """Smart wait function."""
         await asyncio.sleep(milliseconds / 1000)
     
-    async def _wait_for_user_action(self):
-        """Wait for user to manually review and submit the form - IMPROVED VERSION."""
+    async def _auto_submit_form(self):
+        """Automatically find and click the Submit button, then wait for confirmation."""
         self.logger.info("\n" + "="*70)
-        self.logger.info("🎉 FORM FILLING COMPLETED!")
-        self.logger.info("📋 Please review all filled fields carefully")
-        self.logger.info("✅ Make any necessary corrections")
-        self.logger.info("🚀 Submit the form when ready")
-        self.logger.info("🔒 Browser will stay open - close it when done")
+        self.logger.info("🎯 AUTO-SUBMITTING FORM")
         self.logger.info("="*70 + "\n")
         
         try:
+            context = self._get_form_context()
             initial_url = self.page.url
             
-            while True:
-                await asyncio.sleep(2)  # Check every 2 seconds
+            # Find submit button using existing detection method
+            button_info = await self._detect_form_buttons()
+            
+            if button_info['has_submit'] and button_info['submit_button']:
+                submit_button = button_info['submit_button']
+                submit_text = button_info['submit_text']
                 
-                try:
-                    current_url = self.page.url
-                    
-                    # Only consider it a submission if URL changes to a confirmation page
-                    # (not just a different page of the form)
-                    if current_url != initial_url:
-                        # Check if it's a thank you / confirmation page
-                        if any(keyword in current_url.lower() for keyword in ['thank', 'confirm', 'success', 'complete']):
-                            self.logger.info("🎉 Form submission detected! You can close the browser.")
-                            await self._smart_wait(5000)  # Give user time to see confirmation
-                            break
-                        else:
-                            # URL changed but might be multi-page form - don't close yet
-                            self.logger.debug(f"URL changed to {current_url} but not a confirmation page")
-                            initial_url = current_url  # Update to new URL
-                    
-                    # Check for success messages
-                    success_text = await self.page.evaluate('''() => {
-                        const text = document.body.innerText.toLowerCase();
-                        return text.includes('thank you') || 
-                               text.includes('application submitted') || 
-                               text.includes('successfully submitted') ||
-                               text.includes('application received') ||
-                               text.includes('submission successful');
-                    }''')
-                    
-                    if success_text:
-                        self.logger.info("🎉 Success message detected!")
-                        await self._smart_wait(5000)  # Give user time to see
-                        break
+                self.logger.info(f"✅ Found submit button: '{submit_text}'")
+                self.logger.info("🖱️ Clicking submit button...")
+                
+                # Scroll to button and ensure it's visible
+                await submit_button.scroll_into_view_if_needed()
+                await self._smart_wait(500)
+                
+                # Click the submit button
+                await submit_button.click()
+                self.logger.info("✅ Submit button clicked!")
+                
+                # Wait for form submission (2-3 seconds)
+                self.logger.info("⏳ Waiting for form submission to process...")
+                await self._smart_wait(3000)
+                
+                # Check for submission confirmation
+                current_url = self.page.url
+                submission_confirmed = False
+                
+                # Check if URL changed to confirmation page
+                if current_url != initial_url:
+                    if any(keyword in current_url.lower() for keyword in ['thank', 'confirm', 'success', 'complete', 'submitted', 'received']):
+                        self.logger.info(f"🎉 Form submission confirmed! URL changed to: {current_url}")
+                        submission_confirmed = True
+                
+                # Check for success messages on page
+                if not submission_confirmed:
+                    try:
+                        success_text = await self.page.evaluate('''() => {
+                            const text = document.body.innerText.toLowerCase();
+                            return text.includes('thank you') || 
+                                   text.includes('application submitted') || 
+                                   text.includes('successfully submitted') ||
+                                   text.includes('application received') ||
+                                   text.includes('submission successful') ||
+                                   text.includes('your application has been');
+                        }''')
                         
-                except Exception:
-                    # Page might be closed
-                    self.logger.info("Browser closed by user.")
-                    break
+                        if success_text:
+                            self.logger.info("🎉 Success message detected on page!")
+                            submission_confirmed = True
+                    except Exception as e:
+                        self.logger.debug(f"Error checking success message: {e}")
+                
+                if submission_confirmed:
+                    self.logger.info("✅ Form submission successful!")
+                else:
+                    self.logger.warning("⚠️ Could not confirm submission, but button was clicked")
+                
+            else:
+                # Try additional submit button patterns
+                self.logger.warning("⚠️ Standard submit button not found, trying additional patterns...")
+                
+                additional_submit_patterns = [
+                    'button:has-text("Send")',
+                    'button:has-text("Complete")',
+                    'button:has-text("Finish")',
+                    'button:has-text("Apply Now")',
+                    'button:has-text("Submit Now")',
+                    '[role="button"]:has-text("Apply")',
+                    '[role="button"]:has-text("Submit")',
+                    'input[type="submit"]',
+                    'button[type="submit"]'
+                ]
+                
+                submit_found = False
+                for pattern in additional_submit_patterns:
+                    try:
+                        elements = await context.query_selector_all(pattern)
+                        for element in elements:
+                            box = await element.bounding_box()
+                            if box and box['width'] > 0 and box['height'] > 0:
+                                text = await element.text_content() or ""
+                                self.logger.info(f"✅ Found submit button with pattern '{pattern}': '{text.strip()}'")
+                                await element.scroll_into_view_if_needed()
+                                await self._smart_wait(500)
+                                await element.click()
+                                self.logger.info("✅ Submit button clicked!")
+                                await self._smart_wait(3000)
+                                submit_found = True
+                                break
+                        if submit_found:
+                            break
+                    except:
+                        continue
+                
+                if not submit_found:
+                    self.logger.error("❌ Could not find submit button. Form may need manual submission.")
                     
-        except KeyboardInterrupt:
-            self.logger.info("Manual exit requested.")
         except Exception as e:
-            self.logger.debug(f"Error in wait_for_user_action: {e}")
+            self.logger.error(f"❌ Error during auto-submission: {e}")
         finally:
-            # Don't auto-close - let user close the browser
-            self.logger.info("🔒 Browser session ended.")
+            self.logger.info("🔒 Closing browser...")
+            # Browser will be closed by cleanup in fill_form()
     
     async def _wait_for_user_submission(self):
-        """Deprecated: Use _wait_for_user_action instead."""
-        await self._wait_for_user_action()
+        """Deprecated: Use _auto_submit_form instead."""
+        await self._auto_submit_form()
     
     async def _cleanup_browser(self):
         """Properly cleanup browser resources to prevent Windows pipe exceptions."""
