@@ -349,7 +349,6 @@ class FormFillerService:
                 stdout_text = "\n".join(stdout_lines)
                 if "===SUBMISSION_RESULT_START===" in stdout_text:
                     try:
-                        import json
                         import re
                         match = re.search(r'===SUBMISSION_RESULT_START===\n(.*?)\n===SUBMISSION_RESULT_END===', stdout_text, re.DOTALL)
                         if match:
