@@ -87,8 +87,17 @@ class SimpleFormFiller:
             'location_keywords': ['location', 'city', 'state', 'country', 'address', 'zip', 'postal']
         }
     
-    async def fill_form(self, json_file_path: str) -> bool:
-        """Main method to fill form based on JSON data."""
+    async def fill_form(self, json_file_path: str) -> Dict[str, Any]:
+        """Main method to fill form based on JSON data.
+        Returns dictionary with success status and submission details."""
+        submission_result = {
+            "success": False,
+            "submitted": False,
+            "confirmation_url": None,
+            "success_message": None,
+            "submit_button_text": None
+        }
+        
         try:
             # Reset iframe frame for new session
             self.iframe_frame = None
@@ -99,7 +108,7 @@ class SimpleFormFiller:
             # Load and validate JSON data
             self.form_data = self._load_form_data(json_file_path)
             if not self.form_data:
-                return False
+                return submission_result
             
             # Initialize browser
             await self._initialize_browser()
@@ -107,7 +116,7 @@ class SimpleFormFiller:
             # Navigate to form page
             form_page = await self._navigate_to_form(self.form_data)
             if not form_page:
-                return False
+                return submission_result
             
             # Fill all form fields with multi-page support
             success = await self._fill_multipage_form(form_page, self.form_data)
@@ -116,14 +125,19 @@ class SimpleFormFiller:
                 self.logger.info("✅ All form pages filled successfully!")
                 self.logger.info("🚀 Automatically submitting the form...")
                 
-                # Automatically submit the form
-                await self._auto_submit_form()
+                # Automatically submit the form and get result
+                submit_result = await self._auto_submit_form()
+                submission_result.update(submit_result)
+                submission_result["success"] = True
+            else:
+                submission_result["success"] = False
                 
-            return success
+            return submission_result
             
         except Exception as e:
             self.logger.error(f"Error during form filling: {e}")
-            return False
+            submission_result["success"] = False
+            return submission_result
         finally:
             # Proper cleanup to prevent Windows pipe exceptions
             await self._cleanup_browser()
@@ -1206,11 +1220,20 @@ class SimpleFormFiller:
         """Smart wait function."""
         await asyncio.sleep(milliseconds / 1000)
     
-    async def _auto_submit_form(self):
-        """Automatically find and click the Submit button, then wait for confirmation."""
+    async def _auto_submit_form(self) -> Dict[str, Any]:
+        """Automatically find and click the Submit button, then wait for confirmation.
+        Returns dictionary with submission details."""
         self.logger.info("\n" + "="*70)
         self.logger.info("🎯 AUTO-SUBMITTING FORM")
         self.logger.info("="*70 + "\n")
+        
+        # Initialize return values
+        submission_result = {
+            "submitted": False,
+            "confirmation_url": None,
+            "success_message": None,
+            "submit_button_text": None
+        }
         
         try:
             context = self._get_form_context()
@@ -1222,6 +1245,7 @@ class SimpleFormFiller:
             if button_info['has_submit'] and button_info['submit_button']:
                 submit_button = button_info['submit_button']
                 submit_text = button_info['submit_text']
+                submission_result["submit_button_text"] = submit_text
                 
                 self.logger.info(f"✅ Found submit button: '{submit_text}'")
                 self.logger.info("🖱️ Clicking submit button...")
@@ -1241,12 +1265,15 @@ class SimpleFormFiller:
                 # Check for submission confirmation
                 current_url = self.page.url
                 submission_confirmed = False
+                success_message = None
                 
                 # Check if URL changed to confirmation page
                 if current_url != initial_url:
                     if any(keyword in current_url.lower() for keyword in ['thank', 'confirm', 'success', 'complete', 'submitted', 'received']):
                         self.logger.info(f"🎉 Form submission confirmed! URL changed to: {current_url}")
                         submission_confirmed = True
+                        submission_result["confirmation_url"] = current_url
+                        submission_result["submitted"] = True
                 
                 # Check for success messages on page
                 if not submission_confirmed:
@@ -1264,6 +1291,29 @@ class SimpleFormFiller:
                         if success_text:
                             self.logger.info("🎉 Success message detected on page!")
                             submission_confirmed = True
+                            submission_result["submitted"] = True
+                            submission_result["confirmation_url"] = current_url
+                            
+                            # Try to extract the actual success message
+                            try:
+                                success_message = await self.page.evaluate('''() => {
+                                    const bodyText = document.body.innerText;
+                                    const patterns = [
+                                        /thank you[^.!]*[.!]/i,
+                                        /application submitted[^.!]*[.!]/i,
+                                        /successfully submitted[^.!]*[.!]/i,
+                                        /application received[^.!]*[.!]/i
+                                    ];
+                                    for (const pattern of patterns) {
+                                        const match = bodyText.match(pattern);
+                                        if (match) return match[0].trim();
+                                    }
+                                    return null;
+                                }''')
+                                if success_message:
+                                    submission_result["success_message"] = success_message
+                            except:
+                                pass
                     except Exception as e:
                         self.logger.debug(f"Error checking success message: {e}")
                 
@@ -1271,6 +1321,9 @@ class SimpleFormFiller:
                     self.logger.info("✅ Form submission successful!")
                 else:
                     self.logger.warning("⚠️ Could not confirm submission, but button was clicked")
+                    # Still set submitted to True if button was clicked
+                    submission_result["submitted"] = True
+                    submission_result["confirmation_url"] = current_url
                 
             else:
                 # Try additional submit button patterns
@@ -1296,12 +1349,15 @@ class SimpleFormFiller:
                             box = await element.bounding_box()
                             if box and box['width'] > 0 and box['height'] > 0:
                                 text = await element.text_content() or ""
+                                submission_result["submit_button_text"] = text.strip()
                                 self.logger.info(f"✅ Found submit button with pattern '{pattern}': '{text.strip()}'")
                                 await element.scroll_into_view_if_needed()
                                 await self._smart_wait(500)
                                 await element.click()
                                 self.logger.info("✅ Submit button clicked!")
                                 await self._smart_wait(3000)
+                                submission_result["submitted"] = True
+                                submission_result["confirmation_url"] = self.page.url
                                 submit_found = True
                                 break
                         if submit_found:
@@ -1317,6 +1373,12 @@ class SimpleFormFiller:
         finally:
             self.logger.info("🔒 Closing browser...")
             # Browser will be closed by cleanup in fill_form()
+        
+        # Print submission result as JSON for backend to parse
+        import json
+        print(f"\n===SUBMISSION_RESULT_START===\n{json.dumps(submission_result)}\n===SUBMISSION_RESULT_END===\n")
+        
+        return submission_result
     
     async def _wait_for_user_submission(self):
         """Deprecated: Use _auto_submit_form instead."""
@@ -1747,10 +1809,12 @@ async def main():
         return
     
     filler = SimpleFormFiller()
-    success = await filler.fill_form(json_file)
+    result = await filler.fill_form(json_file)
     
-    if success:
+    if result.get("success"):
         print("\n✅ Form filling completed successfully!")
+        if result.get("submitted"):
+            print(f"✅ Form submitted! Confirmation URL: {result.get('confirmation_url', 'N/A')}")
         sys.exit(0)
     else:
         print("\n❌ Form filling failed. Check logs for details.")

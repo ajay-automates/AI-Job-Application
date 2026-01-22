@@ -30,6 +30,8 @@ class ApplicationUpdate(BaseModel):
     notes: Optional[str] = None
     interview_date: Optional[str] = None
     follow_up_date: Optional[str] = None
+    submitted_application_url: Optional[str] = None
+    submission_confirmed: Optional[bool] = None
 
 
 class ApplicationOutcome(BaseModel):

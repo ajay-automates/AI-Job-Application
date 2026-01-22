@@ -338,12 +338,40 @@ class FormFillerService:
             if returncode == 0:
                 logger.info(f"[{application_id}] Completed successfully")
                 
-                db.table("applications").update({
+                # Extract submission result from stdout
+                submission_result = {
+                    "submitted": False,
+                    "confirmation_url": None,
+                    "success_message": None,
+                    "submit_button_text": None
+                }
+                
+                stdout_text = "\n".join(stdout_lines)
+                if "===SUBMISSION_RESULT_START===" in stdout_text:
+                    try:
+                        import json
+                        import re
+                        match = re.search(r'===SUBMISSION_RESULT_START===\n(.*?)\n===SUBMISSION_RESULT_END===', stdout_text, re.DOTALL)
+                        if match:
+                            submission_result = json.loads(match.group(1))
+                            logger.info(f"[{application_id}] Extracted submission result: {submission_result}")
+                    except Exception as e:
+                        logger.warning(f"[{application_id}] Failed to parse submission result: {e}")
+                
+                # Update database with submission details
+                update_data = {
                     "automation_status": "completed",
                     "status": "applied",
                     "applied_at": datetime.now().isoformat(),
                     "updated_at": datetime.now().isoformat()
-                }).eq("id", application_id).execute()
+                }
+                
+                if submission_result.get("submitted"):
+                    update_data["submission_confirmed"] = True
+                    if submission_result.get("confirmation_url"):
+                        update_data["submitted_application_url"] = submission_result["confirmation_url"]
+                
+                db.table("applications").update(update_data).eq("id", application_id).execute()
                 
                 db.table("automation_logs").insert({
                     "application_id": application_id,
@@ -352,7 +380,8 @@ class FormFillerService:
                     "success": True,
                     "metadata": {
                         "job_url": job_url,
-                        "output": stdout.decode()
+                        "output": stdout.decode(),
+                        "submission_result": submission_result
                     }
                 }).execute()
             else:

@@ -23,6 +23,8 @@ interface Application {
   interview_date: string | null
   automation_enabled: boolean
   automation_status: string | null
+  submission_confirmed: boolean | null
+  submitted_application_url: string | null
   jobs: {
     id: string
     title: string
@@ -143,6 +145,23 @@ export function ApplicationsTable({ applications }: ApplicationsTableProps) {
                       View
                     </Link>
                   </Button>
+                  {app.submission_confirmed && app.submitted_application_url && (
+                    <Button 
+                      size="sm" 
+                      variant="default" 
+                      className="bg-green-600 hover:bg-green-700 text-white"
+                      asChild
+                    >
+                      <a
+                        href={app.submitted_application_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        <ExternalLink className="h-4 w-4 mr-1 inline" />
+                        Open Application
+                      </a>
+                    </Button>
+                  )}
                   {app.jobs?.url && (
                     <Button size="sm" variant="ghost" asChild>
                       <a
